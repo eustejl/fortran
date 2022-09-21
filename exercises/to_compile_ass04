@@ -1,0 +1,2 @@
+gfortran -o Ass04.Euste.exe ./assign04/module_reader.f90 ./assign04/module_statistic.f90 ./assign04/module_sorter.f90 Ass04.Euste.f90
+
