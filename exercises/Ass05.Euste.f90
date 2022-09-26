@@ -3,6 +3,7 @@ MODULE stat
     CONTAINS
 
     REAL(8) FUNCTION mean(arr) RESULT(ave)
+        ! calculate average value of arr
         REAL(8),DIMENSION(:),INTENT(IN) :: arr
 
         ave = SUM(arr)/SIZE(arr)
