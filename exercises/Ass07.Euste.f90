@@ -20,7 +20,6 @@ MODULE find_root
             INTEGER :: ios,iter
 
             OPEN(10,IOSTAT=ios,FILE='newton_out.txt',STATUS='replace',ACTION='write')
-              
 
             IF (ios==0) THEN
                 x1 = x0 - f(x0)/df(x0)
@@ -29,7 +28,7 @@ MODULE find_root
                 IF (ABS(x0-x1)>eps) THEN
                     DO
                         x0 = x1
-                        IF (ABS(f(x0)) > TINY(x0)) THEN ! if 1st derivative not zero
+                        IF (ABS(df(x0)) > TINY(x0)) THEN ! if 1st derivative not zero
                                 x1 = x0 - f(x0)/df(x0)
                                 iter = iter+1
                                 WRITE(10,'(f11.8)') x1
@@ -57,7 +56,7 @@ PROGRAM ass06_euste
         
         REAL :: x0=0.0,eps=0.0 ! set first to zero, will be changed by user later
 
-        IF (x0>=0) THEN
+        IF (x0>=0) THEN ! ask user for negative initial guess
                 DO
                         PRINT*,'Enter an initial guess (must be negative)'
                         READ*,x0
@@ -65,18 +64,15 @@ PROGRAM ass06_euste
                 END DO
         END IF
 
-        IF (eps<=0) THEN
+        IF (eps<=0) THEN ! ask user for positive precision value
                 DO
                         PRINT*,'Enter the error tolerance (must be positive, e.g. 1E-7)'
                         READ*,eps
                 IF (eps>0) EXIT
                 END DO
-        END IF
-                
+        END IF             
         
-
+        ! find root by Newton-Raphson method
         PRINT*,'Newton-Raphson method: (root and number of iterations)'
         CALL newton(x0,eps)
-
-
 END PROGRAM ass06_euste
