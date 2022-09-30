@@ -24,14 +24,14 @@ MODULE find_root
             IF (ios==0) THEN
                 x1 = x0 - f(x0)/df(x0)
                 iter = 1
-                WRITE(10,'(f11.8)') x1
+                WRITE(10,*) x1
                 IF (ABS(x0-x1)>eps) THEN
                     DO
                         x0 = x1
                         IF (ABS(df(x0)) > TINY(x0)) THEN ! if 1st derivative not zero
                                 x1 = x0 - f(x0)/df(x0)
                                 iter = iter+1
-                                WRITE(10,'(f11.8)') x1
+                                WRITE(10,*) x1
 
                                 IF (ABS(x0-x1)<eps) EXIT ! if desired precision reached
                         ELSE
