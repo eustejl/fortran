@@ -1,4 +1,4 @@
-MODULE generate_random
+MODULE dens_est
         IMPLICIT NONE
         CONTAINS
 
@@ -23,30 +23,48 @@ MODULE generate_random
              REAL, DIMENSION(:),INTENT(INOUT) :: rand_array
              REAL :: fmax,u,r
              INTEGER :: i=1,j
-             
-             fmax = 17.5 !max of f(x) in [xmin,xmax)=[10,-10)
-             
-             OPEN(20,FILE='pdf1-rej.txt',STATUS='replace',ACTION='write')
+             REAL :: xmin=-10,xmax=10
+
+             fmax = 17.5 !max of f(x) in [xmin,xmax)=[-10,10)
 
              DO
                 CALL RANDOM_NUMBER(u)
                 CALL RANDOM_NUMBER(r)
 
+                u = xmin + (xmax-xmin)*u !re-map u to desired interval
+
                 IF (r<f(u)/fmax) THEN
                        rand_array(i) = u
-                       WRITE(20,*) rand_array(i)
                        i=i+1
                 END IF
                 IF (i==SIZE(rand_array)) EXIT 
              END DO
-             CLOSE(20)
         END SUBROUTINE rejection
 
 
-END MODULE generate_random
 
 
 
+    SUBROUTINE sort_asc(arr,m)
+            ! sort array arr of size m in ascending order
+            INTEGER, INTENT(IN) :: m
+            REAL,DIMENSION(m),INTENT(INOUT) :: arr
+            REAL :: aa ! placeholder for swapping array elements
+            INTEGER :: i,j ! counters       
+
+
+            DO i=1,m ! iterate over all elements
+               DO j=i+1,m ! compare with each succeeding element
+               IF (arr(i)>arr(j)) THEN ! swap with the next element if next element is smaller
+                       aa = arr(j)
+                       arr(j) = arr(i)
+                       arr(i) = aa
+               END IF
+               END DO
+            END DO
+    END SUBROUTINE sort_asc
+
+END MODULE dens_est
 
 
 
@@ -57,9 +75,9 @@ END MODULE generate_random
 
 
 PROGRAM pdf_01
-        USE generate_random
+        USE dens_est
         IMPLICIT NONE
-        INTEGER :: n
+        INTEGER :: n,i
         REAL,DIMENSION(:),ALLOCATABLE :: rand_array
         INTEGER,DIMENSION(:),ALLOCATABLE :: seed
         
@@ -74,4 +92,16 @@ PROGRAM pdf_01
         ALLOCATE(rand_array(n))
 
         CALL rejection(rand_array) !generate random numbers
+
+        CALL sort_asc(rand_array,n) !sort in asc order
+
+        ! save sorted array to file
+        OPEN(20,FILE='pdf1-cdf.txt',STATUS='replace',ACTION='write')
+        DO i=1,n
+                WRITE(20,*) rand_array(i),i/(n*1.0)
+        END DO
+        CLOSE(20)
+
+
+
 END PROGRAM pdf_01
