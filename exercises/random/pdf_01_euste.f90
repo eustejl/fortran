@@ -64,6 +64,49 @@ MODULE dens_est
             END DO
     END SUBROUTINE sort_asc
 
+    SUBROUTINE iqr(arr,cdf,iqr_val)
+            ! interquartile range
+            ! CDF(3/4) - CDF(1/4)
+            REAL,DIMENSION(:),INTENT(IN) :: arr,cdf
+            REAL,INTENT(OUT) :: iqr_val
+            REAL :: eps=1e-5,fq,tq
+            INTEGER :: i
+
+            DO i=1,SIZE(arr) ! find 1st quartile
+                IF (abs(cdf(i)-0.25)<eps) fq = arr(i)
+                IF (abs(cdf(i)-0.75)<eps) THEN
+                        tq = arr(i)
+                        EXIT
+                END IF
+            END DO
+
+            iqr_val = tq - fq
+
+            PRINT*,'IQR=',iqr_val      
+    END SUBROUTINE iqr
+
+    SUBROUTINE freedman_diaconis(arr,cdf,n_bin,delta_x)
+            !(Delta x)_prox = IQR*2/M**(1/3)
+            !N_bin = floor((x_max - x_min)/ (Delta_x)_prox) + 1
+            !(Delta x) = (x_max-x_min)/N_bin
+            REAL,DIMENSION(:),INTENT(IN) :: arr,cdf
+            REAL :: iqr_val,x_prox,x_max,x_min,delta_x
+            INTEGER :: n_bin
+
+            CALL iqr(arr,cdf,iqr_val)
+            
+            x_max = MAXVAL(arr)
+            x_min = MINVAL(arr)
+            x_prox = iqr_val*2/(SIZE(arr)**(1./3))
+            PRINT*,'x_prox=',x_prox
+            n_bin = FLOOR((x_max-x_min)/x_prox)+1
+            PRINT*,'N_bins=',n_bin
+            delta_x = (x_max-x_min)/n_bin
+            PRINT*,'Delta x =',delta_x
+
+
+    END SUBROUTINE freedman_diaconis
+
 END MODULE dens_est
 
 
@@ -77,9 +120,10 @@ END MODULE dens_est
 PROGRAM pdf_01
         USE dens_est
         IMPLICIT NONE
-        INTEGER :: n,i
-        REAL,DIMENSION(:),ALLOCATABLE :: rand_array
+        INTEGER :: n,i,n_bin,j
+        REAL,DIMENSION(:),ALLOCATABLE :: rand_array,cdf,hist
         INTEGER,DIMENSION(:),ALLOCATABLE :: seed
+        REAL :: delta_x
         
         n=5000 !~ number of points
 
@@ -90,18 +134,31 @@ PROGRAM pdf_01
         DEALLOCATE(seed)
 
         ALLOCATE(rand_array(n))
+        ALLOCATE(cdf(n))
 
         CALL rejection(rand_array) !generate random numbers
 
         CALL sort_asc(rand_array,n) !sort in asc order
 
+        ! generate CDF
         ! save sorted array to file
         OPEN(20,FILE='pdf1-cdf.txt',STATUS='replace',ACTION='write')
         DO i=1,n
-                WRITE(20,*) rand_array(i),i/(n*1.0)
+                cdf(i) = i/(n*1.0)
+                WRITE(20,*) rand_array(i),cdf(i)
         END DO
         CLOSE(20)
 
+        !generate histogram
+        CALL freedman_diaconis(rand_array,cdf,n_bin,delta_x)
+        ALLOCATE(hist(n_bin))
+        hist = 0 ! initiliaze histogram array of size n_bin to zero
 
+        DO i=1,n
+                j = FLOOR((rand_array(i)-MINVAL(rand_array))/delta_x)+1
+                hist(j) = hist(j) + 1
+        END DO
+
+        PRINT*,hist
 
 END PROGRAM pdf_01
