@@ -22,7 +22,7 @@ MODULE dens_est
              ! if r < f(u)/fmax, accept x
              REAL, DIMENSION(:),INTENT(INOUT) :: rand_array
              REAL :: fmax,u,r
-             INTEGER :: i=1,j
+             INTEGER :: i=1
              REAL :: xmin=-10,xmax=10
 
              fmax = 17.5 !max of f(x) in [xmin,xmax)=[-10,10)
@@ -103,9 +103,38 @@ MODULE dens_est
             PRINT*,'N_bins=',n_bin
             delta_x = (x_max-x_min)/n_bin
             PRINT*,'Delta x =',delta_x
-
-
     END SUBROUTINE freedman_diaconis
+
+
+    SUBROUTINE kde(arr,cdf,p_kde)
+        !kernel density estimation
+        REAL,DIMENSION(:),INTENT(IN) :: arr,cdf
+        REAL,DIMENSION(:),INTENT(INOUT) :: p_kde
+        REAL :: ave,a,iqr_val,s,p
+        INTEGER :: m,i,j
+
+        m = SIZE(arr)
+        ave = SUM(arr)/m
+        a = ((SUM(arr-ave)**2.)/m)**(1./2) !std dev, change to iqr if smaller
+
+        CALL iqr(arr,cdf,iqr_val)
+        
+        IF ((iqr_val/1.34)<a) a=iqr_val/1.34
+
+        s = 0.9*a/(m**(1./5.)) !smoothing param
+        PRINT*,'s=',s
+        
+        DO i=1,SIZE(p_kde)
+            p = 0
+            DO j=1,m
+                p = p + normal( -10. + (i-1)*20./SIZE(p_kde) , s, arr(j) )
+            END DO
+            p_kde(i) = p/(m*1.0)
+        END DO            
+        
+
+    END SUBROUTINE kde
+
 
 END MODULE dens_est
 
@@ -120,10 +149,10 @@ END MODULE dens_est
 PROGRAM pdf_01
         USE dens_est
         IMPLICIT NONE
-        INTEGER :: n,i,n_bin,j
-        REAL,DIMENSION(:),ALLOCATABLE :: rand_array,cdf,hist
+        INTEGER :: n,i,n_bin,j,m
+        REAL,DIMENSION(:),ALLOCATABLE :: rand_array,cdf,hist,p_kde
         INTEGER,DIMENSION(:),ALLOCATABLE :: seed
-        REAL :: delta_x
+        REAL :: delta_x,arr_min
         
         n=5000 !~ number of points
 
@@ -142,12 +171,12 @@ PROGRAM pdf_01
 
         ! generate CDF
         ! save sorted array to file
-        OPEN(20,FILE='pdf1-cdf.txt',STATUS='replace',ACTION='write')
+        OPEN(10,FILE='pdf1-cdf.txt',STATUS='replace',ACTION='write')
         DO i=1,n
                 cdf(i) = i/(n*1.0)
-                WRITE(20,*) rand_array(i),cdf(i)
+                WRITE(10,*) rand_array(i),cdf(i)
         END DO
-        CLOSE(20)
+        CLOSE(10)
 
         !generate histogram
         CALL freedman_diaconis(rand_array,cdf,n_bin,delta_x)
@@ -159,6 +188,25 @@ PROGRAM pdf_01
                 hist(j) = hist(j) + 1
         END DO
 
-        PRINT*,hist
+        ! save histogram to file
+        arr_min = MINVAL(rand_array)
+        OPEN(20,FILE='pdf1-hist.txt',STATUS='replace',ACTION='write')
+        DO i=1,n_bin
+                WRITE(20,*) arr_min+i*delta_x, hist(i)
+        END DO
+        CLOSE(20)
+
+
+        !kernel density estimation
+        m = 10000
+        ALLOCATE(p_kde(m))
+        CALL kde(rand_array,cdf,p_kde)
+
+        ! save kde to file
+        OPEN(30,FILE='pdf1-kde.txt',STATUS='replace',ACTION='write')
+        DO i=1,m
+                WRITE(30,*) -10. + (i-1)*20./m ,p_kde(i)
+        END DO
+        CLOSE(30)
 
 END PROGRAM pdf_01
