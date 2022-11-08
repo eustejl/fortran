@@ -5,7 +5,7 @@ MODULE dens_est
         REAL FUNCTION normal(x,s,xi) RESULT(n)
             ! normal    
             REAL :: x,s,xi
-            n = (1/(s*SQRT(2*4.0*ATAN(1.)))) * EXP(-0.5*((x-xi)/2.)**2)    
+            n = (1/(s*SQRT(2*4.0*ATAN(1.)))) * EXP(-((x-xi)/(4*s))**2)
         END FUNCTION
 
         REAL FUNCTION f(x) RESULT(y)
@@ -116,12 +116,12 @@ MODULE dens_est
         m = SIZE(arr)
         ave = SUM(arr)/m
         a = ((SUM(arr-ave)**2.)/m)**(1./2) !std dev, change to iqr if smaller
-
+        PRINT*,a
         CALL iqr(arr,cdf,iqr_val)
         
         IF ((iqr_val/1.34)<a) a=iqr_val/1.34
-
-        s = 0.9*a/(m**(1./5.)) !smoothing param
+        PRINT*,a
+        s = 0.9*a/(m**(1./5.)) !smoothing param       
         PRINT*,'s=',s
         
         DO i=1,SIZE(p_kde)
@@ -129,7 +129,8 @@ MODULE dens_est
             DO j=1,m
                 p = p + normal( -10. + (i-1)*20./SIZE(p_kde) , s, arr(j) )
             END DO
-            p_kde(i) = p/(m*1.0)
+            p_kde(i) = p/m
+
         END DO            
         
 
@@ -149,7 +150,7 @@ END MODULE dens_est
 PROGRAM pdf_01
         USE dens_est
         IMPLICIT NONE
-        INTEGER :: n,i,n_bin,j,m
+        INTEGER :: n,i,n_bin,j
         REAL,DIMENSION(:),ALLOCATABLE :: rand_array,cdf,hist,p_kde
         INTEGER,DIMENSION(:),ALLOCATABLE :: seed
         REAL :: delta_x,arr_min
@@ -192,20 +193,20 @@ PROGRAM pdf_01
         arr_min = MINVAL(rand_array)
         OPEN(20,FILE='pdf1-hist.txt',STATUS='replace',ACTION='write')
         DO i=1,n_bin
-                WRITE(20,*) arr_min+i*delta_x, hist(i)
+                WRITE(20,*) arr_min+(i-0.5)*delta_x, hist(i)/(SUM(hist)*delta_x) !normalized hist
         END DO
         CLOSE(20)
 
 
         !kernel density estimation
-        m = 10000
-        ALLOCATE(p_kde(m))
+        n = 10000
+        ALLOCATE(p_kde(n))
         CALL kde(rand_array,cdf,p_kde)
 
         ! save kde to file
         OPEN(30,FILE='pdf1-kde.txt',STATUS='replace',ACTION='write')
-        DO i=1,m
-                WRITE(30,*) -10. + (i-1)*20./m ,p_kde(i)
+        DO i=1,n
+                WRITE(30,*) -10.+(i-1)*20./n ,p_kde(i)
         END DO
         CLOSE(30)
 
